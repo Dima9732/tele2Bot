@@ -1,6 +1,7 @@
 import config
 import telebot
 import requests
+import json
 
 bot = telebot.TeleBot(config.token)
 
@@ -25,11 +26,15 @@ def tel(message):
 @bot.message_handler(commands=["pas"])
 def pas(message):
     headers = {'accept': 'application/json', 'X-API-Token':message.text[5:]}
-    r = requests.get(host + "/subscribers/" + client.msisdn + "/balance")
-    print(r.url)
+    r = requests.get(host + "subscribers/" + client.msisdn + "/balance", headers=headers)
+    inf = json.loads(r.text)
     if r.status_code == 200:
         client.Token = message.text[5:]
-        bot.send_message(message.chat.id, r.json())
+        mes = "Вы успешно авторизировались!) \nВаш баланс: {} \nВаши остатки по пакетам: \n\tсмс: {} \n\tинтернет: {} \n\tминуты: {}\n".format(inf["data"]["money"],
+                                                                                                                                         inf["data"]["sms"],
+                                                                                                                                         inf["data"]["internet"],
+                                                                                                                                         inf["data"]["call"])
+        bot.send_message(message.chat.id, mes)
     else:
         bot.send_message(message.chat.id, "Неправильный пароль(( " + message.text[5:])
 
