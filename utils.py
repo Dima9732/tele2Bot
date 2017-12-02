@@ -7,7 +7,7 @@ def generate_markup(file):
     :return: Объект кастомной клавиатуры
     """
     markup = types.ReplyKeyboardMarkup(one_time_keyboard=True, resize_keyboard=True)
-    with file as f:
+    with open(file) as f:
         li = f.read().split('\n')
 
     for item in li:
