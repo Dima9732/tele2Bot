@@ -4,13 +4,16 @@ import requests
 import json
 from utils import generate_markup
 from dbworker import *
+from Tele2_methods import Tele2_methods as api
+import datetime
 
 bot = telebot.TeleBot(config.token)
 
 host = "http://tele2-hackday-2017.herokuapp.com/api/"
 @bot.message_handler(commands=["start"]) #реагирование на начало
 def start(message):
-    bot.send_message(message.chat.id, "Вас приветствует Телебот!) \nВыберите, что хотите сделать?)\n1)Залогиниться \n2)Узнать, все обо мне)")
+    keyboard_hider = telebot.types.ReplyKeyboardRemove()
+    bot.send_message(message.chat.id, "Вас приветствует Телебот!) \nВыберите, что хотите сделать?)\n1)Залогиниться \n2)Узнать, все обо мне)", reply_markup=keyboard_hider)
     set_state(message.chat.id, config.States.S_START.value)
 
 @bot.message_handler(func=lambda message: get_current_state(message.chat.id) == config.States.S_START.value)
@@ -63,7 +66,12 @@ def profile(message):
     elif message.text.find("аккаунт") + 1:
         set_state(message.chat.id, config.States.S_ACCINFO.value)
         markup = generate_markup("accinf.txt")
-        bot.send_message(message.chat.id, 'Вы хотите посмотреть:', reply_markup=markup)
+        mes = api.inform_about_sub(get_msisdn(message.chat.id))
+        ms = ""
+        for key in mes:
+            ms += "{} : {}\n".format(key, mes[key])
+
+        bot.send_message(message.chat.id, ms + '\nВы хотите посмотреть:', reply_markup=markup)
     elif message.text.find("услуг") + 1:
         set_state(message.chat.id, config.States.S_SERVICES.value)
         markup = generate_markup("services.txt")
@@ -74,6 +82,126 @@ def ret_to_prof(message):
     markup = generate_markup("Profile.txt")
     bot.send_message(message.chat.id, "Что Вы хотите узнать?", reply_markup=markup)
 
+@bot.message_handler(func=lambda message: get_current_state(message.chat.id) == config.States.S_ACCINFO.value)
+def acc_info(message):
+    if message.text.find("Платежи") + 1:
+        markup = generate_markup("payments.txt")
+        set_state(message.chat.id, config.States.S_PAYMENTS.value)
+        bot.send_message(message.chat.id, "Вы хотите узнать информацию про:", reply_markup=markup)
+
+    if message.text.find("Мой") + 1:
+        markup = generate_markup("back.txt")
+        set_state(message.chat.id, config.States.S_MY_TAX.value)
+        req = api.tariff(get_msisdn(message.chat.id), get_token(message.chat.id))
+        mes = "Название : {}\nКоличество смс : {}\nЦена пакета смс : {}\nКоличество минут : {}\nЦена пакета минут :{}\nПакет интернета : {}\nЦена пакета интернета : {}\nПодробнее : {}".format(
+            req['name'], req['smsPackageSize'], req['smsPrice'], req['callPackageSize'], req['callPrice'], req['internetPackageSize'], req['internetPrice'], req['url']
+        )
+
+        bot.send_message(message.chat.id, mes + "\nЕсли хотите сменить тариф напишите 'сменить тариф на ...'", reply_markup=markup)
+
+    if message.text.find("Мои") + 1:
+        markup = generate_markup("back.txt")
+        set_state(message.chat.id, config.States.S_MY_SERVICES.value)
+        req = api.getServices(get_msisdn(message.chat.id), get_token(message.chat.id))
+        print(req)
+        mes = "Подключенные услуги\n"
+        for serv in req:
+            mes += "название : {} описание : {} цена {}\n".format(serv["name"], serv["description"], serv["subscriptionFee"])
+        bot.send_message(message.chat.id, mes + "\nЕсли хотите отключить услугу напишите 'отключить ...", reply_markup=markup)
+
+    if message.text.find("информац") + 1:
+        keyboard_hider = telebot.types.ReplyKeyboardRemove()
+        set_state(message.chat.id, config.States.S_CHANGEINFO_ENTERNAME.value)
+        bot.send_message(message.chat.id, "Введите Ваше имя \n(-, если хотите оставить без изменений):", reply_markup=keyboard_hider)
+
+inf_user = {"firstName":"DIMA", "middleName":"ANYA", "lastName":"FILL", "email":"HENRY", "keyword":"HAHATONTEAM"}
+
+@bot.message_handler(func=lambda message: get_current_state(message.chat.id) == config.States.S_CHANGEINFO_ENTERNAME.value)
+def change_name(message):
+    if not message.text.find('-') + 1:
+        inf_user.update(firstName=message.text)
+    set_state(message.chat.id, config.States.S_CHANGEINFO_ENTERMIDNAME.value)
+    bot.send_message(message.chat.id, "Я запомнил имя "+ inf_user["firstName"] + ". Введите Ваше отчество \n(-, если хотите оставить без изменений):")
+
+@bot.message_handler(func=lambda message: get_current_state(message.chat.id) == config.States.S_CHANGEINFO_ENTERMIDNAME.value)
+def change_midname(message):
+    if not message.text.find('-') + 1:
+        inf_user.update(middleName=message.text)
+    set_state(message.chat.id, config.States.S_CHANGEINFO_ENTERLASTNAME.value)
+    bot.send_message(message.chat.id, "Я запомнил отчество "+ inf_user["middleName"] + ". Введите Вашу фамилию \n(-, если хотите оставить без изменений):")
+
+@bot.message_handler(func=lambda message: get_current_state(message.chat.id) == config.States.S_CHANGEINFO_ENTERLASTNAME.value)
+def change_lastname(message):
+    if not message.text.find('-') + 1:
+        inf_user.update(lastName=message.text)
+    set_state(message.chat.id, config.States.S_CHANGEINFO_ENTERMAIL.value)
+    bot.send_message(message.chat.id, "Я запомнил фамилию "+ inf_user["lastName"] + ". Введите Ваш e-mail \n(-, если хотите оставить без изменений):")
+
+@bot.message_handler(func=lambda message: get_current_state(message.chat.id) == config.States.S_CHANGEINFO_ENTERMAIL.value)
+def change_mail(message):
+    if not message.text.find('-') + 1:
+        inf_user.update(email=message.text)
+    set_state(message.chat.id, config.States.S_CHANGEINFO_ENTERKEY.value)
+    bot.send_message(message.chat.id, "Я запомнил e-mail "+ inf_user["email"] + ". Введите Ваш новый пароль \n(пароль менять обязательно):")
+
+@bot.message_handler(func=lambda message: get_current_state(message.chat.id) == config.States.S_CHANGEINFO_ENTERKEY.value)
+def change_key(message):
+    inf_user.update(keyword=message.text)
+    set_state(message.chat.id, config.States.S_PROFILE.value)
+    markup = generate_markup("Profile.txt")
+    bot.send_message(message.chat.id, "Я запомнил пароль "+ inf_user["keyword"] + ". Данные сохранены", reply_markup=markup)
+    api.changeAbonentInfo(get_msisdn(message.chat.id), get_token(message.chat.id), inf_user)
+
+@bot.message_handler(func=lambda message: get_current_state(message.chat.id) == config.States.S_PAYMENTS.value)
+def payments(message):
+    if message.text.find("Бала") + 1:
+        req = api.balance(get_msisdn(message.chat.id), get_token(message.chat.id))
+        markup = generate_markup("Profile.txt")
+        set_state(message.chat.id, config.States.S_PROFILE.value)
+        bot.send_message(message.chat.id, "Баланс : " + str(req["money"]), reply_markup=markup)
+    if message.text.find("Начисления") + 1:
+        tod = datetime.datetime.today()
+        mpa = tod.replace(month=1, day=1, microsecond=0)
+        tod = tod.replace(microsecond=0)
+        req = api.getCharges(get_msisdn(message.chat.id), get_token(message.chat.id), from1=mpa.isoformat(sep="T"), to=tod.isoformat(sep="T"))
+        mes = ""
+        for date in req[-20:]:
+            mes += "дата :{} \nколичество : {} \nчего: {} \nцена: {}\n\n".format(date["date"], date["volume"], date["type"], date["fee"])
+        markup = generate_markup("Profile.txt")
+        set_state(message.chat.id, config.States.S_PROFILE.value)
+        bot.send_message(message.chat.id, "Выписка за месяц: \n" + mes, reply_markup=markup)
+    if message.text.find("Выписка") + 1:
+        tod = datetime.datetime.today()
+        mpa = tod.replace(month=1, day=1, microsecond=0)
+        tod = tod.replace(microsecond=0)
+        req = api.payment(get_msisdn(message.chat.id), get_token(message.chat.id), mpa.isoformat(sep="T"), tod.isoformat(sep="T"))
+        markup = generate_markup("Profile.txt")
+        mes = ""
+        for date in req:
+            mes += "дата :{} \nКоличество пополнения: {}\n\n".format(date["date"], date["value"])
+        set_state(message.chat.id, config.States.S_PROFILE.value)
+        bot.send_message(message.chat.id, "Недавние платежи\n" + mes, reply_markup=markup)
+
+@bot.message_handler(func=lambda message: get_current_state(message.chat.id) == config.States.S_TAXES.value)
+def taxes(message):
+    if message.text.find("Все") + 1:
+        markup = generate_markup("back.txt")
+        requ = api.getTariffs()
+        mesa = ""
+        for req in requ:
+            mes = "Название : {}\nКоличество смс : {}\nЦена пакета смс : {}\nКоличество минут : {}\nЦена пакета минут :{}\nПакет интернета : {}\nЦена пакета интернета : {}\nПодробнее : {}\n\n".format(req['name'], req['smsPackageSize'], req['smsPrice'], req['callPackageSize'], req['callPrice'],req['internetPackageSize'], req['internetPrice'], req['url'])
+            mesa += mes
+        bot.send_message(message.chat.id, mesa, reply_markup=markup)
+
+    if message.text.find("Мой") + 1:
+        markup = generate_markup("back.txt")
+        set_state(message.chat.id, config.States.S_MY_TAX.value)
+        req = api.tariff(get_msisdn(message.chat.id), get_token(message.chat.id))
+        mes = "Название : {}\nКоличество смс : {}\nЦена пакета смс : {}\nКоличество минут : {}\nЦена пакета минут :{}\nПакет интернета : {}\nЦена пакета интернета : {}\nПодробнее : {}".format(
+            req['name'], req['smsPackageSize'], req['smsPrice'], req['callPackageSize'], req['callPrice'], req['internetPackageSize'], req['internetPrice'], req['url']
+        )
+
+        bot.send_message(message.chat.id, mes + "\nЕсли хотите сменить тариф напишите 'сменить тариф на ...'", reply_markup=markup)
 
 if __name__ == '__main__':
     bot.polling(none_stop=True)

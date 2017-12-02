@@ -15,12 +15,14 @@ class States(Enum):
     S_PROFILE = "3" #Что хотите в профиле
     S_ACCINFO = "4" #информация об аккаунт
     S_PAYMENTS = "5"
-    S_CHANGEINFO = "6"
+    S_CHANGEINFO_ENTERNAME = "6"
     S_TAXES = "7"
     S_MY_TAX = "8"
     S_CHANGE_TAX = "9"
     S_SERVICES = "10"
     S_MY_SERVICES = "11"
     S_OFF_SERVICE = "12"
-
-
+    S_CHANGEINFO_ENTERKEY = "13"
+    S_CHANGEINFO_ENTERMIDNAME = "14"
+    S_CHANGEINFO_ENTERLASTNAME = "15"
+    S_CHANGEINFO_ENTERMAIL = "16"
