@@ -20,7 +20,7 @@ def user_takes_decision(message):
         bot.send_message(message.chat.id, "Вы выбрали пункт залогиниться. Теперь введите телефон")
         set_state(message.chat.id, config.States.S_ENTER_TEL.value)
     elif message.text.find('Обо мне') + 1 or message.text.find("2") + 1:
-        bot.send_message(message.chat.id, "Я бот команды Hahaton Team. Меня писали люди, которым не дали редбулла((( \nИнтересный факт о компонии")
+        bot.send_message(message.chat.id, "Я бот команды Hahaton Team. Меня писали люди, которым дали редбулла))) \nИнтересный факт о компaнии")
     else :
         bot.send_message(message.chat.id, "Я не могу разобрать, что Вы сказали(((")
 
@@ -68,9 +68,11 @@ def profile(message):
         set_state(message.chat.id, config.States.S_SERVICES.value)
         markup = generate_markup("services.txt")
         bot.send_message(message.chat.id, 'Вы хотите посмотреть:', reply_markup=markup)
-# @bot.message_handler(func=lambda message: get_current_state(message.chat.id) == config.States.S_TAXES.value):
-
-
+@bot.message_handler(func=lambda message: message.text.find("Вернуться") + 1 != 0)
+def ret_to_prof(message):
+    set_state(message.chat.id, config.States.S_PROFILE.value)
+    markup = generate_markup("Profile.txt")
+    bot.send_message(message.chat.id, "Что Вы хотите узнать?", reply_markup=markup)
 
 
 if __name__ == '__main__':
