@@ -2,6 +2,7 @@ import config
 import telebot
 import requests
 import json
+from utils import generate_markup
 
 bot = telebot.TeleBot(config.token)
 
@@ -13,7 +14,8 @@ client = Client()
 host = "http://tele2-hackday-2017.herokuapp.com/api/"
 @bot.message_handler(commands=["start"]) #реагирование на начало
 def start(message):
-    bot.send_message(message.chat.id, "Введите телефон в формате: /tel 7903......")
+    markup = generate_markup("Hi.txt")
+    bot.send_message(message.chat.id, "Вас приветствует Телебот!) \nВыберите, что хотите сделать?)", reply_markup=markup)
 
 @bot.message_handler(commands=["tel"])
 def tel(message):
